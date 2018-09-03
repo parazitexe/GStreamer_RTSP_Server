@@ -22,19 +22,19 @@ enum server_stream_status{
 	RE_STREAM_STOP
 };
 
-enum server_type{
-	SKY,
-	LAND
-};
-
 struct _server_status{
 	gint	connection;
 	gint	stream;
 } server_status;
 
+enum server_type{
+	SKY,
+	LAND
+};
+
 const int type = LAND;
-const char* location 					=  "rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1";
 const int* check_connection_timeout 	=  3;
+const char* location 					=  "rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1";
 
 
 void connected(GstRTSPServer *gstrtspserver,  GstRTSPClient *arg1, gpointer user_data){
@@ -70,18 +70,6 @@ int main (int argc, char *argv[]){
 	}
 
 	
-
-
-
-
-
-
-
-
-
-
-
-
 	/* start serving */
 	loop = g_main_loop_new (NULL, FALSE);
 	g_main_loop_run (loop);
@@ -105,7 +93,7 @@ void run_server(){
 	
 	
 	char factory_launch_string[1000];
-	sprintf(factory_launch_string, "( rtspsrc  latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
+	sprintf(factory_launch_string, "( rtspsrc latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
 	
 	gst_rtsp_media_factory_set_launch (factory, factory_launch_string);
 	mounts = gst_rtsp_server_get_mount_points (server);
