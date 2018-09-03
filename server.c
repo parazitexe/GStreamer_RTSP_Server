@@ -22,11 +22,17 @@ enum server_stream_status{
 	RE_STREAM_STOP
 };
 
+enum server_type{
+	SKY,
+	LAND
+};
+
 struct _server_status{
 	gint	connection;
 	gint	stream;
 } server_status;
 
+const int type = LAND;
 const char* location 					=  "rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1";
 const int* check_connection_timeout 	=  3;
 
@@ -51,12 +57,18 @@ int main (int argc, char *argv[]){
 	//init gstreamer
 	gst_init (&argc, &argv);
 	
-	play_native();
-	//run_server();
-	//first "initial" launch of check connection for run server
-	//check_connection();
-	//run requests for check RTSP SERVER connection status and reconnect if connection fail
-	//g_timeout_add_seconds ( check_connection_timeout, (GSourceFunc)check_connection, NULL);
+	
+	if(type == LAND){
+		//first "initial" launch of check connection for run server
+		check_connection();
+		//run requests for check RTSP_LAND_SERVER connection status and reconnect if connection fail
+		g_timeout_add_seconds ( check_connection_timeout, (GSourceFunc)check_connection, NULL);
+	}else{
+		//run server for RTSP_SKY_SERVER
+		//first "initial" launch of check connection for run server
+		check_connection();
+	}
+
 	
 
 
@@ -77,30 +89,6 @@ int main (int argc, char *argv[]){
 	return 0;
 }
 
-//play_native
-void play_native(){
-  GstElement *pipeline;
-  GstBus *bus;
-  GstMessage *msg;
-
-
-  /* Build the pipeline */
-  pipeline = gst_parse_launch ("playbin uri=rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1", NULL);
-
-  /* Start playing */
-  gst_element_set_state (pipeline, GST_STATE_PLAYING);
-
-  /* Wait until error or EOS */
-  bus = gst_element_get_bus (pipeline);
-  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
-
-  /* Free resources */
-  if (msg != NULL)
-    gst_message_unref (msg);
-  gst_object_unref (bus);
-  gst_element_set_state (pipeline, GST_STATE_NULL);
-  gst_object_unref (pipeline);
-}
 
 //run_RTSP_server
 void run_server(){
@@ -117,10 +105,7 @@ void run_server(){
 	
 	
 	char factory_launch_string[1000];
-	//sprintf(factory_launch_string, "( rtspsrc  latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! timeoverlay ! x264enc ! rtph264pay pt=96 name=pay0  )");
 	sprintf(factory_launch_string, "( rtspsrc  latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
-	//sprintf(factory_launch_string, "( videotestsrc ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
-	//sprintf(factory_launch_string, "( videotestsrc ! clockoverlay ! x264enc ! rtph264pay name=pay0 pt=96 )");
 	
 	gst_rtsp_media_factory_set_launch (factory, factory_launch_string);
 	mounts = gst_rtsp_server_get_mount_points (server);
