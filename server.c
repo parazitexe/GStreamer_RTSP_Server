@@ -58,6 +58,8 @@ int main (int argc, char *argv[]){
 	gst_init (&argc, &argv);
 	
 	
+	//play_native();
+	
 	if(type == LAND){
 		//first "initial" launch of check connection for run server
 		check_connection();
@@ -78,6 +80,31 @@ int main (int argc, char *argv[]){
 }
 
 
+//play_native
+void play_native(){
+  GstElement *pipeline;
+  GstBus *bus;
+  GstMessage *msg;
+
+
+  /* Build the pipeline */
+  pipeline = gst_parse_launch ("playbin uri=rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1", NULL);
+
+  /* Start playing */
+  gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+  /* Wait until error or EOS */
+  bus = gst_element_get_bus (pipeline);
+  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+
+  /* Free resources */
+  if (msg != NULL)
+    gst_message_unref (msg);
+  gst_object_unref (bus);
+  gst_element_set_state (pipeline, GST_STATE_NULL);
+  gst_object_unref (pipeline);
+}
+
 //run_RTSP_server
 void run_server(){
 	printf("server_run \n");
@@ -93,9 +120,27 @@ void run_server(){
 	
 	
 	char factory_launch_string[1000];
-	sprintf(factory_launch_string, "( rtspsrc latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
+	sprintf(factory_launch_string, "( rtspsrc latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0 )");
 	
-	gst_rtsp_media_factory_set_launch (factory, factory_launch_string);
+	//gst_rtsp_media_factory_set_launch (factory, factory_launch_string);
+	
+	
+	/*gst_rtsp_media_factory_set_launch (factory, "( "
+		"rtspsrc latency=0 max-ts-offset=0 location=rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1 ! "
+		"rtph264depay ! rtph264pay name=pay0 pt=96 "
+		")");*/
+	
+	gst_rtsp_media_factory_set_launch (factory, "( "
+		"rtspsrc latency=0 max-ts-offset=0 location=rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1 ! "
+		"rtph264depay ! rtph264pay name=pay0 pt=96 "
+ ")");
+      
+	/*gst_rtsp_media_factory_set_launch (factory, "( "
+      "videotestsrc ! video/x-raw,width=352,height=288,framerate=15/1 ! "
+      "x264enc ! rtph264pay name=pay0 pt=96 "
+      "audiotestsrc ! audio/x-raw,rate=8000 ! "
+      "alawenc ! rtppcmapay name=pay1 pt=8 " ")");*/
+      
 	mounts = gst_rtsp_server_get_mount_points (server);
 	gst_rtsp_mount_points_add_factory (mounts, "/local_rtsp_server", factory );
 	//add handler for show conection of clients
@@ -142,4 +187,15 @@ static gboolean check_connection(){
 	}
 	
 	return TRUE;
+}
+
+// clear expired sessions
+static gboolean clear_session (GstRTSPServer * server){
+  GstRTSPSessionPool *pool;
+
+  pool = gst_rtsp_server_get_session_pool (server);
+  gst_rtsp_session_pool_cleanup (pool);
+  g_object_unref (pool);
+
+  return TRUE;
 }
