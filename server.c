@@ -5,8 +5,11 @@
 #include <gst/rtsp/gstrtspurl.h>
 #include <gst/rtsp/gstrtspconnection.h>
 
-//build commmand
+//build commmand Geany
 //gcc -Wall  -o "%e" "%f" `pkg-config --cflags --libs gstreamer-video-1.0 gstreamer-1.0 gstreamer-rtsp-server-1.0` -w -lgstrtsp-1.0
+
+//build commmand for CLI
+//gcc -Wall  -o server server.c `pkg-config --cflags --libs gstreamer-video-1.0 gstreamer-1.0 gstreamer-rtsp-server-1.0` -w -lgstrtsp-1.0
 
 
 //install GstRTSPServer
@@ -32,20 +35,25 @@ enum server_type{
 	LAND
 };
 
-const int type = LAND;
+const int type 							= LAND;
 const int* check_connection_timeout 	=  3;
-const char* location 					=  "rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1";
+const int* clear_session_timeout 		=  3;
+//const char* location 					=  "rtsp://admin:admin1@192.168.100.222:554/cam/realmonitor?channel=1&subtype=1";
+const char* location 					=  "rtsp://192.168.100.103:8554/local_rtsp_server";
+
+//gllobal variable
+GstRTSPServer 		*server;
 
 
-void connected(GstRTSPServer *gstrtspserver,  GstRTSPClient *arg1, gpointer user_data){
-	printf("cllient_connected \n");
-}
-
+//functtions prottotipes 
 static gboolean check_connection();
+
+static gboolean clear_session();
 
 void run_server();
 
-void play_native();
+void connected(GstRTSPServer *gstrtspserver,  GstRTSPClient *arg1, gpointer user_data);
+
 
 int main (int argc, char *argv[]){
 	
@@ -69,7 +77,8 @@ int main (int argc, char *argv[]){
 		check_connection();
 	}
 
-	
+	g_timeout_add_seconds (clear_session_timeout, (GSourceFunc)clear_session, server);
+
 	/* start serving */
 	loop = g_main_loop_new (NULL, FALSE);
 	g_main_loop_run (loop);
@@ -83,7 +92,6 @@ void run_server(){
 	printf("server_run \n");
 	
 	//variables for create stream to localhost
-	GstRTSPServer 		*server;
 	GstRTSPMediaFactory *factory;
 	GstRTSPMountPoints 	*mounts;
 	
@@ -91,9 +99,14 @@ void run_server(){
 	gst_rtsp_server_attach (server, NULL);
 	factory = gst_rtsp_media_factory_new ();
 	
+
+	
 	
 	char factory_launch_string[1000];
 	sprintf(factory_launch_string, "( rtspsrc latency=0 max-ts-offset=0 location=%s%s", location, " ! rtph264depay ! rtph264pay pt=96 name=pay0  )");
+		
+	//use one factory for multiple clients
+	gst_rtsp_media_factory_set_shared( factory, TRUE);
 	
 	gst_rtsp_media_factory_set_launch (factory, factory_launch_string);
 	mounts = gst_rtsp_server_get_mount_points (server);
@@ -141,5 +154,22 @@ static gboolean check_connection(){
 		run_server();
 	}
 	
+	return TRUE;
+}
+//run  when client connect to server
+void connected(GstRTSPServer *gstrtspserver,  GstRTSPClient *arg1, gpointer user_data){
+	printf("cllient_connected \n");
+}
+
+
+// clear expired sessions
+static gboolean clear_session (GstRTSPServer * server){
+	printf("run clear_session at local server\n");
+	GstRTSPSessionPool *pool;
+
+	pool = gst_rtsp_server_get_session_pool (server);
+	gst_rtsp_session_pool_cleanup (pool);
+	g_object_unref (pool);
+
 	return TRUE;
 }
